@@ -33,8 +33,9 @@ def page_number_from_text(text):
     return int(m.group(1)) if m else None
 
 def ocr_image(img):
-    return pytesseract.image_to_string(preprocess(img))
-
+    # PSM 6 is for "Assume a single uniform block of text" - perfect for bills
+    return pytesseract.image_to_string(preprocess(img), config='--psm 6')
+    
 def load_bill_pages(files):
     pages = []
     for f in files:
@@ -100,18 +101,15 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    # Regex to find all dollar-like amounts in the document
-    all_amounts = re.findall(r'(\d+\.\d{2})', text)
-    # The LADWP "Total Electric Charges" is almost always the very last number on page 3
-    # Convert all findings to floats and pick the last one
-    money_floats = [float(a) for a in all_amounts if float(a) > 10.00] # Ignore small change
-    total_charges = money_floats[-1] if money_floats else 0.0
+    # Get all numbers that look like money (10.00 to 5000.00 range)
+    money_matches = re.findall(r'(\d{1,4}\.\d{2})', text)
+    money_floats = [float(m) for m in money_matches if 10.00 < float(m) < 5000.00]
+    # The total bill charge is usually the largest number on the bill
+    total_charges = max(money_floats) if money_floats else 0.0
     
-    # KWH: Look for "total kwh used" specifically. 
-    # If the text is noisy, look for the word "total" and "used"
-    # then take the 4 digit number next to it.
-    kwh_match = re.search(r'total.*used.*?(\d{3,4})', text, re.I | re.S)
-    total_kwh = float(kwh_match.group(1)) if kwh_match else 0.0
+    # Get all 3-4 digit numbers followed by kwh
+    kwh_matches = re.findall(r'(\d{3,4})\s*kwh', text, re.I)
+    total_kwh = float(kwh_matches[0]) if kwh_matches else 0.0
     
     return {
         'current_kwh': total_kwh,
