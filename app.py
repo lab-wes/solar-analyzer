@@ -52,11 +52,11 @@ def sort_pages(pages):
 
 def detect_utility(text):
     text_lower = text.lower()
-    # If the word 'dwp' is ANYWHERE in the text, it MUST be LADWP
-    if 'dwp' in text_lower or 'water and power' in text_lower:
+    # If it reads "total electric charges" and it's not SCE, it's LADWP
+    if 'total electric charges' in text_lower:
         return 'LADWP'
-    # If the word 'edison' is ANYWHERE, it MUST be SCE
-    if 'edison' in text_lower or 'sce' in text_lower:
+    # If it reads "new charges" and it's not LADWP, it's likely SCE
+    if 'new charges' in text_lower or 'edison' in text_lower:
         return 'SCE'
     return 'Unknown'
 
@@ -97,31 +97,23 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    st.text("DEBUG OCR TEXT: " + page3['text'][:500]) # Shows first 500 characters
-    # Regex to catch "Total Electric Charges" and the dollar amount
-    # We include `[s$]` to handle potential OCR mistakes where $ is read as s
-    total_charges = extract_money(r'total electric charges\s*[\$s]?\s*([\d,]+\.\d{2})', text)
+    # Search for "total electric charges" and a dollar sign/amount
+    # The OCR read "tota electric oharges", so we look for that pattern
+    total_charges = extract_money(r'tota.*?electric.*?charges.*?\$?\s*([\d,]+\.\d{2})', text)
     
-    # Catch "1435 kWh" or similar.
-    # Looking for the word "total" followed by "kwh"
-    kwh_matches = re.findall(r'(\d{3,4})\s*kwh', text, re.I)
-    total_kwh = float(kwh_matches[0]) if kwh_matches else None
-    
-    # Defaults
-    days = 62 
-    # Use the extracted values, or 0 if failed
-    k = total_kwh if total_kwh else 0
-    c = total_charges if total_charges else 0
+    # We saw "1435" in the OCR? (You mentioned 1435 kWh earlier)
+    # Let's search for any 3-4 digit number followed by 'kwh' or 'oharges'
+    kwh_matches = re.findall(r'(\d{3,4})\s*(?:kwh|oharges)', text, re.I)
+    total_kwh = float(kwh_matches[0]) if kwh_matches else 0
     
     return {
-        'current_kwh': k, 
-        'bi_monthly_kwh': k, 
-        'monthly_kwh_est': k / 2, 
-        'avg_daily_kwh': k / days, 
-        'total_charges_page3': c, 
+        'current_kwh': total_kwh, 
+        'bi_monthly_kwh': total_kwh, 
+        'monthly_kwh_est': total_kwh / 2, 
+        'avg_daily_kwh': total_kwh / 62, 
+        'total_charges_page3': total_charges, 
         'billing_frequency': 'bi-monthly'
     }
-
 
 def parse_bill(pages):
     
