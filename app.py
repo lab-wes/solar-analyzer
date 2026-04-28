@@ -21,18 +21,22 @@ def parse_data(text, utility):
     avg_rate = bill_amount / bill_usage if bill_usage > 0 else 0
     if avg_rate > 0.80 or avg_rate < 0.10: avg_rate = 0.35
     
-    annual_usage = (bill_usage * 6) if utility == 'LADWP' else (bill_usage * 12)
-    est_annual_cost = (bill_amount * 6) if utility == 'LADWP' else (bill_amount * 12)
+    # Annual estimates
+    annual_usage = (bill_usage * 12) if utility == 'SCE' else (bill_usage * 6)
+    est_annual_cost = bill_amount * 12 if utility == 'SCE' else bill_amount * 6
     monthly_avg = est_annual_cost / 12
     
-    target_annual_kwh = annual_usage * 1.10
+    # SOLAR PROPOSAL - EXACTLY AS REQUESTED
+    target_annual_kwh = annual_usage * 1.10  # 10% more
+    new_rate = avg_rate * 0.75               # 25% less
     system_kw = target_annual_kwh / (365 * 5 * 0.8)
-    fixed_monthly = (target_annual_kwh / 12) * (avg_rate * 0.75)
+    fixed_monthly = (target_annual_kwh / 12) * new_rate  # Monthly kWh * new rate
     
     return {
         'bill_amount': bill_amount, 'bill_usage': bill_usage, 'avg_rate': avg_rate,
         'annual_usage': annual_usage, 'est_annual_cost': est_annual_cost, 
-        'monthly_avg': monthly_avg, 'system_kw': system_kw, 'fixed_monthly': fixed_monthly
+        'monthly_avg': monthly_avg, 'system_kw': system_kw, 
+        'fixed_monthly': fixed_monthly, 'new_rate': new_rate
     }
 
 st.title('Solar Bill Analyzer')
@@ -56,9 +60,10 @@ if files:
     c3.metric('Est. Monthly Avg', f"${data['monthly_avg']:.2f}")
 
     st.subheader('Solar Proposal')
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     col1.metric('Recommended System', f"{data['system_kw']:.1f} kW")
-    col2.metric('New Fixed Monthly', f"${data['fixed_monthly']:.2f}")
+    col2.metric('New Rate', f"${data["new_rate"]:.3f}/kWh")
+    col3.metric('New Fixed Monthly', f"${data['fixed_monthly']:.2f}")
 
     if st.button('Generate Report'):
         if contact:
