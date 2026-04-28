@@ -123,9 +123,13 @@ def parse_ladwp_page3(text):
 
 
 def parse_bill(pages):
+    
     pages = sort_pages(pages)
     all_text = '\n'.join(p['text'] for p in pages)
+    # DEBUG: See what utility we are actually detecting
     utility = detect_utility(all_text)
+    st.sidebar.write(f"Detected Utility: {utility}")
+    st.sidebar.write(f"OCR SAMPLE: {all_text[:100]}")
     page1 = next((p for p in pages if p['page_no'] == 1), pages[0])
     page3 = next((p for p in pages if p['page_no'] == 3), pages[1] if len(pages) > 1 else pages[0])
     page4 = next((p for p in pages if p['page_no'] == 4), pages[1] if len(pages) > 1 else pages[0])
