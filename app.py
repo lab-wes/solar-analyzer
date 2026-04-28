@@ -52,12 +52,15 @@ def sort_pages(pages):
 
 def detect_utility(text):
     text_lower = text.lower()
-    # If it reads "total electric charges" and it's not SCE, it's LADWP
-    if 'total electric charges' in text_lower:
+    
+    # LADWP is a "High Priority" lock
+    if any(marker in text_lower for marker in ['electric oharges', 'water & power', 'ladwp']):
         return 'LADWP'
-    # If it reads "new charges" and it's not LADWP, it's likely SCE
-    if 'new charges' in text_lower or 'edison' in text_lower:
+    
+    # Only if it IS NOT LADWP, then check for SCE
+    if any(marker in text_lower for marker in ['southern california edison', 'sce', 'edison']):
         return 'SCE'
+        
     return 'Unknown'
 
 def extract_money(pattern, text):
@@ -126,8 +129,11 @@ def parse_bill(pages):
     page1 = next((p for p in pages if p['page_no'] == 1), pages[0])
     page3 = next((p for p in pages if p['page_no'] == 3), pages[1] if len(pages) > 1 else pages[0])
     page4 = next((p for p in pages if p['page_no'] == 4), pages[1] if len(pages) > 1 else pages[0])
-
+    
+# ... inside your LADWP check ...
     if utility == 'LADWP':
+# Force the LADWP parsing flow here
+# ... your parsing code ...
         p1 = parse_page1(page1['text']) if page1 else {}
         p3 = parse_ladwp_page3(page3['text']) if page3 else {}
         bill_amount = p1.get('bill_amount') or p3.get('total_charges_page3')
