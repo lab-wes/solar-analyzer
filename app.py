@@ -52,11 +52,10 @@ def sort_pages(pages):
 
 def detect_utility(text):
     text_lower = text.lower()
-    # Check LADWP first, as it's often confused with general water/power terms
-    if any(k in text_lower for k in ['ladwp', 'los angeles department of water and power']):
+    # Use high-confidence LADWP markers
+    if 'ladwp' in text_lower or 'department of water and power' in text_lower:
         return 'LADWP'
-    # Then check SCE
-    if any(k in text_lower for k in ['southern california edison', 'sce', 'edison']):
+    if 'edison' in text_lower or 'sce' in text_lower:
         return 'SCE'
     return 'Unknown'
 
@@ -97,25 +96,32 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    # Search specifically for total charges after labels like "Total Electric Charges"
-    total_charges = extract_money(r'total electric charges\s*\$\s*([\d,]+\.\d{2})', text)
+    st.text("DEBUG OCR TEXT: " + page3['text'][:500]) # Shows first 500 characters
+    # Regex to catch "Total Electric Charges" and the dollar amount
+    # We include `[s$]` to handle potential OCR mistakes where $ is read as s
+    total_charges = extract_money(r'total electric charges\s*[\$s]?\s*([\d,]+\.\d{2})', text)
     
-    # Search for "Total Used" near kWh
-    total_kwh = extract_num(r'total used\s*(\d+(?:\.\d+)?)\s*kwh', text)
+    # Catch "1435 kWh" or similar.
+    # Looking for the word "total" followed by "kwh"
+    kwh_matches = re.findall(r'(\d{3,4})\s*kwh', text, re.I)
+    total_kwh = float(kwh_matches[0]) if kwh_matches else None
     
-    # Calculate estimates
-    days = 62 # LADWP bi-monthly default
-    monthly_kwh_est = total_kwh / 2 if total_kwh else 0
-    avg_daily = (total_kwh / days) if total_kwh else 0
+    # Defaults
+    days = 62 
+    # Use the extracted values, or 0 if failed
+    k = total_kwh if total_kwh else 0
+    c = total_charges if total_charges else 0
     
     return {
-        'current_kwh': total_kwh, 
-        'bi_monthly_kwh': total_kwh, 
-        'monthly_kwh_est': monthly_kwh_est, 
-        'avg_daily_kwh': avg_daily, 
-        'total_charges_page3': total_charges, 
+        'current_kwh': k, 
+        'bi_monthly_kwh': k, 
+        'monthly_kwh_est': k / 2, 
+        'avg_daily_kwh': k / days, 
+        'total_charges_page3': c, 
         'billing_frequency': 'bi-monthly'
     }
+
+
 def parse_bill(pages):
     pages = sort_pages(pages)
     all_text = '\n'.join(p['text'] for p in pages)
