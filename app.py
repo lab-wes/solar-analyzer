@@ -33,8 +33,16 @@ def page_number_from_text(text):
     return int(m.group(1)) if m else None
 
 def ocr_image(img):
-    # PSM 6 is for "Assume a single uniform block of text" - perfect for bills
-    return pytesseract.image_to_string(preprocess(img), config='--psm 6')
+    w, h = img.size
+    # Scan the image in 3 pieces to ensure the whole page is read
+    strip_1 = img.crop((0, 0, w, h // 3))
+    strip_2 = img.crop((0, h // 3, w, 2 * h // 3))
+    strip_3 = img.crop((0, 2 * h // 3, w, h))
+    
+    text = ""
+    for strip in [strip_1, strip_2, strip_3]:
+        text += pytesseract.image_to_string(preprocess(strip), config='--psm 6') + "\n"
+    return text
     
 def load_bill_pages(files):
     pages = []
