@@ -100,21 +100,30 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    # Search for "total electric charges" and a dollar sign/amount
-    # The OCR read "tota electric oharges", so we look for that pattern
-    total_charges = extract_money(r'tota.*?electric.*?charges.*?\$?\s*([\d,]+\.\d{2})', text)
+    # Locate the block with "Total Electric Charges"
+    # Capture the number right after it
+    # We use regex with DOTALL to find the phrase and the next $ amount
+    charges_match = re.search(r'total electric charges.*?\$?\s*([\d,]+\.\d{2})', text, re.I | re.S)
     
-    # We saw "1435" in the OCR? (You mentioned 1435 kWh earlier)
-    # Let's search for any 3-4 digit number followed by 'kwh' or 'oharges'
-    kwh_matches = re.findall(r'(\d{3,4})\s*(?:kwh|oharges)', text, re.I)
-    total_kwh = float(kwh_matches[0]) if kwh_matches else 0
+    # If the regex is too strict, just find the dollar amount in the last 20% of the text (where totals usually are)
+    if charges_match:
+        total_charges = float(charges_match.group(1).replace(',', ''))
+    else:
+        # Fallback: Find dollar amounts in the last part of the page
+        all_money = re.findall(r'\$?\s*([\d,]+\.\d{2})', text[-2000:]) 
+        total_charges = float(all_money[-1].replace(',', '')) if all_money else 0.0
+    
+    # KWH: Get the one specifically labeled as "total kwh used" or similar
+    kwh_match = re.search(r'(?:total|total\s*kwh)\s*used\s*(\d{3,4})', text, re.I)
+    total_kwh = float(kwh_match.group(1)) if kwh_match else 0.0
     
     return {
-        'current_kwh': total_kwh, 
-        'bi_monthly_kwh': total_kwh, 
-        'monthly_kwh_est': total_kwh / 2, 
-        'avg_daily_kwh': total_kwh / 62, 
-        'total_charges_page3': total_charges, 
+        'current_kwh': total_kwh,
+        'bi_monthly_kwh': total_kwh,
+        'monthly_kwh_est': total_kwh / 2,
+        'avg_daily_kwh': total_kwh / 62,
+        'total_charges_page3': total_charges,
+        'avg_rate': (total_charges / total_kwh) if total_kwh > 0 else 0.0,
         'billing_frequency': 'bi-monthly'
     }
 
