@@ -16,36 +16,38 @@ def parse_data(text, utility):
     money_floats = [float(m) for m in money if 10.00 < float(m) < 5000.00]
     bill_amount = max(money_floats) if money_floats else 0.0
     
-    # IMPROVED USAGE - Multiple patterns
-    patterns = [
-        r'(\d{3,4})\s*kwh', r'kwh\s+(\d{3,4})', r'total\s+usage[:\s]*(\d{3,4})',
-        r'(\d{1,3}),?(\d{3})\s*kwh', r'(\d{3,4})\s+usage', r'kwh\s+(\d{1,3},\d{3})'
-    ]
+    # ULTIMATE USAGE DETECTION - Collect ALL candidates, pick largest realistic
+    candidates = []
+    
+    # Pattern 1: Direct kWh matches
+    for pat in [r'(\d{3,4})\s*kwh', r'kwh\s+(\d{3,4})', r'(\d{3,4})\s*kWh']:
+        candidates.extend(re.findall(pat, text, re.I))
+    
+    # Pattern 2: Comma formatted
+    candidates.extend([int(''.join(m).replace(',','')) for m in re.findall(r'(\d{1,3}),(\d{3})', text)])
+    
+    # Pattern 3: Total usage keywords
+    for pat in [r'total\s+usage[:\s]*(\d{3,4})', r'usage[:\s]*(\d{3,4})']:
+        candidates.extend(re.findall(pat, text, re.I))
+    
+    # Convert to ints, filter realistic bill usages, pick MAX
     bill_usage = 0
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.I)
-        if matches:
-            for m in matches:
-                if isinstance(m, tuple):
-                    num = int(''.join(m).replace(',',''))
-                else:
-                    num = int(str(m).replace(',',''))
-                if 200 <= num <= 5000:
-                    bill_usage = num
-                    break
-            if bill_usage > 0: break
+    for cand in candidates:
+        try:
+            num = int(str(cand).replace(',',''))
+            if 300 <= num <= 3000:  # SCE residential range
+                bill_usage = max(bill_usage, num)
+        except: pass
     
     avg_rate = bill_amount / bill_usage if bill_usage > 0 else 0
     if avg_rate > 0.80 or avg_rate < 0.10: avg_rate = 0.35
     
-    # Annual estimates
     annual_usage = bill_usage * 12 if utility == 'SCE' else bill_usage * 6
     est_annual_cost = bill_amount * 12 if utility == 'SCE' else bill_amount * 6
     monthly_avg = est_annual_cost / 12
     
-    # PERFECT SOLAR MATH
-    target_annual_kwh = annual_usage * 1.10      # +10%
-    new_rate = avg_rate * 0.75                   # -25%
+    target_annual_kwh = annual_usage * 1.10
+    new_rate = avg_rate * 0.75
     system_kw = target_annual_kwh / (365 * 5 * 0.8)
     fixed_monthly = (target_annual_kwh / 12) * new_rate
     
