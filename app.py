@@ -100,21 +100,17 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    # Locate the block with "Total Electric Charges"
-    # Capture the number right after it
-    # We use regex with DOTALL to find the phrase and the next $ amount
-    charges_match = re.search(r'total electric charges.*?\$?\s*([\d,]+\.\d{2})', text, re.I | re.S)
+    # Regex to find all dollar-like amounts in the document
+    all_amounts = re.findall(r'(\d+\.\d{2})', text)
+    # The LADWP "Total Electric Charges" is almost always the very last number on page 3
+    # Convert all findings to floats and pick the last one
+    money_floats = [float(a) for a in all_amounts if float(a) > 10.00] # Ignore small change
+    total_charges = money_floats[-1] if money_floats else 0.0
     
-    # If the regex is too strict, just find the dollar amount in the last 20% of the text (where totals usually are)
-    if charges_match:
-        total_charges = float(charges_match.group(1).replace(',', ''))
-    else:
-        # Fallback: Find dollar amounts in the last part of the page
-        all_money = re.findall(r'\$?\s*([\d,]+\.\d{2})', text[-2000:]) 
-        total_charges = float(all_money[-1].replace(',', '')) if all_money else 0.0
-    
-    # KWH: Get the one specifically labeled as "total kwh used" or similar
-    kwh_match = re.search(r'(?:total|total\s*kwh)\s*used\s*(\d{3,4})', text, re.I)
+    # KWH: Look for "total kwh used" specifically. 
+    # If the text is noisy, look for the word "total" and "used"
+    # then take the 4 digit number next to it.
+    kwh_match = re.search(r'total.*used.*?(\d{3,4})', text, re.I | re.S)
     total_kwh = float(kwh_match.group(1)) if kwh_match else 0.0
     
     return {
