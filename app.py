@@ -51,10 +51,13 @@ def sort_pages(pages):
     return sorted(labeled, key=lambda x: x['page_no']) + unlabeled
 
 def detect_utility(text):
-    if any(k in text for k in ['southern california edison', 'sce', 'edison']):
-        return 'SCE'
-    if any(k in text for k in ['ladwp', 'los angeles department of water and power', 'department of water and power']):
+    text_lower = text.lower()
+    # Check LADWP first, as it's often confused with general water/power terms
+    if any(k in text_lower for k in ['ladwp', 'los angeles department of water and power']):
         return 'LADWP'
+    # Then check SCE
+    if any(k in text_lower for k in ['southern california edison', 'sce', 'edison']):
+        return 'SCE'
     return 'Unknown'
 
 def extract_money(pattern, text):
@@ -94,15 +97,25 @@ def parse_sce_page4(text):
     return {'current_kwh': current_kwh, 'year_this_daily_avg': year_this, 'year_last_daily_avg': year_last, 'avg_daily_kwh': avg_daily}
 
 def parse_ladwp_page3(text):
-    total_kwh = extract_num(r'total\s*(?:used|usage|electricity used).*?(\d+(?:\.\d+)?)\s*kwh', text)
-    if total_kwh is None:
-        total_kwh = extract_num(r'total\s*(\d+(?:\.\d+)?)\s*kwh', text)
+    # Search specifically for total charges after labels like "Total Electric Charges"
     total_charges = extract_money(r'total electric charges\s*\$\s*([\d,]+\.\d{2})', text)
-    days = extract_num(r'\bdays\s*(\d+)', text) or 62
-    monthly_kwh_est = total_kwh / 2 if total_kwh is not None else None
-    avg_daily = (total_kwh / days) if total_kwh and days else None
-    return {'current_kwh': total_kwh, 'bi_monthly_kwh': total_kwh, 'monthly_kwh_est': monthly_kwh_est, 'avg_daily_kwh': avg_daily, 'total_charges_page3': total_charges, 'months_per_bar': 2, 'billing_frequency': 'bi-monthly'}
-
+    
+    # Search for "Total Used" near kWh
+    total_kwh = extract_num(r'total used\s*(\d+(?:\.\d+)?)\s*kwh', text)
+    
+    # Calculate estimates
+    days = 62 # LADWP bi-monthly default
+    monthly_kwh_est = total_kwh / 2 if total_kwh else 0
+    avg_daily = (total_kwh / days) if total_kwh else 0
+    
+    return {
+        'current_kwh': total_kwh, 
+        'bi_monthly_kwh': total_kwh, 
+        'monthly_kwh_est': monthly_kwh_est, 
+        'avg_daily_kwh': avg_daily, 
+        'total_charges_page3': total_charges, 
+        'billing_frequency': 'bi-monthly'
+    }
 def parse_bill(pages):
     pages = sort_pages(pages)
     all_text = '\n'.join(p['text'] for p in pages)
