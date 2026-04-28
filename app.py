@@ -98,3 +98,13 @@ if files:
         st.success('Report created and saved!')
     elif st.button('Generate Report'):
         st.warning("Please enter your phone or email first!")
+
+    # Use different labels for the two buttons
+    if st.button('Generate Report'):
+        if contact:
+            pdf = make_pdf(data)
+            st.download_button('Download PDF report', pdf, "solar_report.pdf")
+            pd.DataFrame([data | {'contact': contact}]).to_csv(LEADS_CSV, mode='a', header=not os.path.exists(LEADS_CSV))
+            st.success('Report created and saved!')
+        else:
+            st.warning("Please enter your phone or email first!")
