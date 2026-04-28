@@ -52,9 +52,10 @@ def sort_pages(pages):
 
 def detect_utility(text):
     text_lower = text.lower()
-    # Use high-confidence LADWP markers
-    if 'ladwp' in text_lower or 'department of water and power' in text_lower:
+    # If the word 'dwp' is ANYWHERE in the text, it MUST be LADWP
+    if 'dwp' in text_lower or 'water and power' in text_lower:
         return 'LADWP'
+    # If the word 'edison' is ANYWHERE, it MUST be SCE
     if 'edison' in text_lower or 'sce' in text_lower:
         return 'SCE'
     return 'Unknown'
