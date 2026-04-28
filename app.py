@@ -74,32 +74,13 @@ if files:
     all_text = '\n'.join([ocr_image(Image.open(io.BytesIO(f.read()))) for f in files]).lower()
     data = parse_data(all_text, utility)
 
-    st.subheader('Current Bill Summary')
-    c1, c2, c3 = st.columns(3)
-    c1.metric('Bill Amount', f"${data['bill_amount']:.2f}")
-    c2.metric('Usage (kWh)', f"{data['bill_usage']:.0f}")
-    c3.metric('Avg Rate', f"${data['avg_rate']:.3f}/kWh")
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric('Annual Usage', f"{data['annual_usage']:.0f} kWh")
-    c2.metric('Est. Annual Cost', f"${data['est_annual_cost']:.2f}")
-    c3.metric('Est. Monthly Avg', f"${data['monthly_avg']:.2f}")
+    st.subheader('Results')
+    cols = st.columns(3)
+    cols[0].metric('Bill Amount', f"${data['bill_amount']:.2f}")
+    cols[1].metric('Est. Monthly', f"${data['monthly_avg']:.2f}")
+    cols[2].metric('Avg Rate', f"${data['avg_rate']:.3f}/kWh")
 
-    st.subheader('Solar Proposal')
-    col1, col2, col3 = st.columns(3)
-    col1.metric('Recommended System', f"{data['system_kw']:.1f} kW")
-    col2.metric('New Fixed Monthly', f"${data['fixed_monthly']:.2f}")
-    col3.metric('Target Rate', f"${data['target_rate']:.3f}/kWh")
-    
-    if st.button('Generate Report') and contact:
-        pdf = make_pdf(data)
-        st.download_button('Download PDF report', pdf, "solar_report.pdf")
-        pd.DataFrame([data | {'contact': contact}]).to_csv(LEADS_CSV, mode='a', header=not os.path.exists(LEADS_CSV))
-        st.success('Report created and saved!')
-    elif st.button('Generate Report'):
-        st.warning("Please enter your phone or email first!")
-
-    # Use different labels for the two buttons
+    # ONE button only
     if st.button('Generate Report'):
         if contact:
             pdf = make_pdf(data)
