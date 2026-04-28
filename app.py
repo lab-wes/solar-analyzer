@@ -17,10 +17,9 @@ CALENDLY_LINK = 'https://calendly.com/your-link'
 LEADS_CSV = 'leads.csv'
 
 def preprocess(img):
-    arr = np.array(img.convert('RGB'))
-    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-    gray = cv2.bilateralFilter(gray, 9, 75, 75)
-    th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    arr = np.array(img.convert('L')) # Convert to Grayscale
+    # Adaptive thresholding: Great for uneven lighting (like shadows)
+    th = cv2.adaptiveThreshold(arr, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
     return Image.fromarray(th)
 
 def get_pages(file_bytes, filename):
@@ -33,15 +32,8 @@ def page_number_from_text(text):
     return int(m.group(1)) if m else None
 
 def ocr_image(img):
-    w, h = img.size
-    # Scan the image in 3 pieces to ensure the whole page is read
-    strip_1 = img.crop((0, 0, w, h // 3))
-    strip_2 = img.crop((0, h // 3, w, 2 * h // 3))
-    strip_3 = img.crop((0, 2 * h // 3, w, h))
-    
-    text = ""
-    for strip in [strip_1, strip_2, strip_3]:
-        text += pytesseract.image_to_string(preprocess(strip), config='--psm 6') + "\n"
+    text = pytesseract.image_to_string(preprocess(img), config='--psm 3')
+    st.sidebar.write(f"FULL TEXT LENGTH: {len(text)}")
     return text
     
 def load_bill_pages(files):
