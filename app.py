@@ -48,12 +48,14 @@ def make_pdf(data):
     doc = SimpleDocTemplate("solar_report.pdf", pagesize=letter)
     style = getSampleStyleSheet()
     story = [Paragraph("Solar Savings Report", style['Title']), Spacer(1, 0.2*inch)]
-    rows = [['Metric', 'Value'],
-            ['Bill Amount', f"${data['bill_amount']:.2f}"],
-            ['Annual Usage', f"{data['annual_usage']:.0f} kWh"],
-            ['Avg Rate', f"${data['avg_rate']:.3f}/kWh"],
-            ['Proposed System', f"{data['system_kw']:.1f} kW"],
-            ['New Fixed Monthly', f"${data['fixed_monthly']:.2f}']]
+    rows = [
+        ['Metric', 'Value'],
+        ['Bill Amount', f"${data['bill_amount']:.2f}"],
+        ['Annual Usage', f"{data['annual_usage']:.0f} kWh"],
+        ['Avg Rate', f"${data['avg_rate']:.3f}/kWh"],
+        ['Proposed System', f"{data['system_kw']:.1f} kW"],
+        ['New Fixed Monthly', f"${data['fixed_monthly']:.2f}"]
+    ]
     story.append(Table(rows, colWidths=[2*inch, 2*inch]))
     story.append(Spacer(1, 0.2*inch))
     story.append(Paragraph(f'Schedule here: {CALENDLY_LINK}', style['BodyText']))
